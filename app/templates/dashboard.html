@@ -1,0 +1,73 @@
+{% extends "base.html" %}
+{% block title %}Bài học của tôi - NEU WebPath{% endblock %}
+
+{% block content %}
+<div class="w-full px-4 sm:px-6 lg:px-8 sm:px-6 lg:px-8 py-5 space-y-5">
+
+    <div class="w-full bg-white border border-slate-200 rounded-lg p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+            <h1 class="text-xl sm:text-2xl font-bold text-slate-900">
+                Xin chào, {{ current_user.username }}
+            </h1>
+            <p class="text-sm text-slate-600 mt-0.5">
+                Chọn bài giảng bên dưới để đọc lý thuyết, sau đó làm bài tập viết code thực hành.
+            </p>
+        </div>
+
+        <div class="flex items-center gap-4 text-sm shrink-0">
+            <span>Điểm: <strong class="text-[#0056D2]">{{ current_user.total_xp }} XP</strong></span>
+            <span>-</span>
+            <span>Chủ đề hoàn thành: <strong class="text-emerald-700">{{ mastered_skills_count }}/{{ skills|length }}</strong></span>
+        </div>
+    </div>
+
+    <div class="w-full grid grid-cols-1 xl:grid-cols-2 gap-5 items-start">
+        {% for course in courses %}
+        <div class="w-full bg-white border border-slate-200 rounded-lg overflow-hidden">
+            <div class="px-5 py-3.5 bg-slate-50 border-b border-slate-200 flex items-center justify-between">
+                <h2 class="text-base font-bold text-slate-900">{{ course.title }}</h2>
+            </div>
+
+            <div class="divide-y divide-slate-100">
+                {% for lesson in course.lessons %}
+                    {% set is_read = lesson.id in completed_lesson_ids %}
+                    {% set ex = lesson.exercises.first() or (course.skill.exercises.first() if course.skill else None) %}
+                    {% set is_solved = ex and (ex.id in ac_exercise_ids) %}
+
+                    <div class="p-4 sm:px-5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:bg-slate-50/60">
+                        <div class="min-w-0">
+                            <a href="{{ url_for('main.lesson_detail', slug=lesson.slug) }}"
+                               class="text-sm sm:text-base font-semibold text-slate-900 hover:text-[#0056D2] block">
+                                {{ lesson.title }}
+                            </a>
+                            {% if ex %}
+                            <p class="text-xs text-slate-500 mt-0.5">
+                                Bài tập đi kèm: <strong>{{ ex.title }}</strong>
+                            </p>
+                            {% endif %}
+                        </div>
+
+                        <div class="flex items-center gap-2 shrink-0">
+                            <a href="{{ url_for('main.lesson_detail', slug=lesson.slug) }}"
+                               class="px-3 py-1.5 rounded border text-xs font-semibold
+                               {% if is_read %}border-emerald-300 bg-emerald-50 text-emerald-700{% else %}border-slate-300 bg-white text-slate-700 hover:border-[#0056D2] hover:text-[#0056D2]{% endif %}">
+                                {{ 'Đã đọc bài giảng' if is_read else '1. Đọc bài giảng' }}
+                            </a>
+
+                            {% if ex %}
+                            <a href="{{ url_for('judge.workspace', slug=ex.slug) }}"
+                               class="px-3 py-1.5 rounded text-xs font-semibold
+                               {% if is_solved %}bg-emerald-600 text-white{% else %}bg-[#0056D2] hover:bg-blue-700 text-white{% endif %}">
+                                {{ 'Đã giải bài tập' if is_solved else '2. Làm bài tập' }}
+                            </a>
+                            {% endif %}
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+</div>
+{% endblock %}

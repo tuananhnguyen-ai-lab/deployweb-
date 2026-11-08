@@ -1,0 +1,481 @@
+{% extends "base.html" %}
+{% block title %}Cổng Mentor / Giảng viên & Quản trị viên{% endblock %}
+
+{% block content %}
+<div class="w-full px-4 sm:px-6 lg:px-8 sm:px-6 lg:px-8 py-8 space-y-8">
+    <!-- Header Banner -->
+    <div class="bg-white border border-gray-200 rounded-lg p-6 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+            <span class="px-2.5 py-0.5 rounded bg-[#F0F6FF] text-[#0056D2] text-xs font-bold uppercase">
+                Quản trị LMS • Soạn Học Liệu & Mentor Review
+            </span>
+            <h1 class="text-2xl font-extrabold text-[#1F1F1F] mt-1">
+                Bảng Điều Khiển Mentor / Giảng Viên & Quản Trị Viên
+            </h1>
+            <p class="text-xs text-gray-600 mt-0.5">
+                Bổ sung Bài giảng lý thuyết, tạo Bài tập thực hành (Python / Flask / SQL / REST API), chấm nhận xét code và theo dõi tiến độ sinh viên.
+            </p>
+        </div>
+        <div class="flex flex-wrap items-center gap-2">
+            <a href="#section-create-content" class="px-4 py-2.5 rounded bg-[#0E8043] hover:bg-emerald-800 text-white text-xs font-bold transition">
+                Thêm Bài Giảng / Bài Tập
+            </a>
+            <a href="{{ url_for('skills.tree_view') }}" class="px-4 py-2.5 rounded bg-[#0056D2] hover:bg-[#00419E] text-white text-xs font-bold transition">
+                Quản lý Cạnh Đồ thị DAG
+            </a>
+        </div>
+    </div>
+
+    <!-- PHẦN MỚI: GIẢNG VIÊN BỔ SUNG BÀI GIẢNG & BÀI TẬP CHO SINH VIÊN LUYỆN TẬP -->
+    <div id="section-create-content" class="grid lg:grid-cols-12 gap-8">
+        <!-- Cột trái (5 cols): Form Thêm Bài Giảng Lý Thuyết Mới -->
+        <div class="lg:col-span-5 bg-white border border-gray-200 rounded-lg p-6 shadow-sm space-y-4">
+            <div class="flex items-center justify-between pb-3 border-b border-gray-200">
+                <h2 class="text-base font-bold text-[#1F1F1F]">
+                    1. Bổ sung Bài Giảng Lý Thuyết
+                </h2>
+                <button type="button" onclick="fillSampleLesson()" class="px-2.5 py-1 rounded bg-[#F0F6FF] hover:bg-blue-100 text-[#0056D2] text-[11px] font-bold transition">
+                    Điền mẫu nhanh
+                </button>
+            </div>
+
+            <!-- Hộp kéo bài giảng tự động từ FIT-NEU SmartDoc API -->
+            <div class="p-3 rounded-lg bg-purple-50 border border-purple-200 space-y-2 text-xs">
+                <div class="flex items-center justify-between">
+                    <span class="font-extrabold text-purple-900">Lấy bài giảng từ FIT-NEU SmartDoc API:</span>
+                </div>
+                <div class="flex gap-1.5">
+                    <input type="text" id="mp-smartdoc-url" value="https://fit.neu.edu.vn/smartdoc/room/DKwsP5/?chap=1" class="flex-1 px-2.5 py-1.5 rounded border border-purple-300 bg-white font-mono text-[11px] text-gray-900">
+                    <button type="button" onclick="fetchSmartdocIntoForm()" class="px-3 py-1.5 rounded bg-purple-700 hover:bg-purple-800 text-white font-bold shrink-0">
+                        Lấy Nội Dung
+                    </button>
+                </div>
+                <p id="mp-smartdoc-status" class="text-[11px] text-purple-700 hidden"></p>
+            </div>
+
+            <form method="POST" action="{{ url_for('main.create_lesson') }}" class="space-y-3.5 text-xs">
+                <div>
+                    <label class="block font-bold text-gray-700 mb-1">Thuộc Học phần (Course):</label>
+                    <select name="course_id" required class="w-full px-3 py-2 rounded border border-gray-300 bg-white text-gray-900 focus:border-[#0056D2] focus:outline-none">
+                        {% for c in courses %}
+                        <option value="{{ c.id }}">{{ c.title }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div>
+                    <label class="block font-bold text-gray-700 mb-1">Tiêu đề Bài giảng:</label>
+                    <input type="text" id="lesson-title-input" name="title" required placeholder="VD: [CNTT1188 - Chương 6] Bảo mật JWT & REST API" class="w-full px-3 py-2 rounded border border-gray-300 bg-white text-gray-900 focus:border-[#0056D2] focus:outline-none">
+                </div>
+
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block font-bold text-gray-700 mb-1">Thứ tự bài học:</label>
+                        <input type="number" name="order_index" value="{{ (lessons|length) + 1 }}" min="1" class="w-full px-3 py-2 rounded border border-gray-300 bg-white text-gray-900">
+                    </div>
+                    <div>
+                        <label class="block font-bold text-gray-700 mb-1">Điểm thưởng (XP):</label>
+                        <input type="number" name="xp_reward" value="30" min="5" step="5" class="w-full px-3 py-2 rounded border border-gray-300 bg-white text-gray-900">
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block font-bold text-gray-700 mb-1">Nội dung Bài giảng (Hỗ trợ Markdown & Khối code):</label>
+                    <textarea id="lesson-content-input" name="content_markdown" rows="9" required placeholder="## 1. Mục tiêu bài học&#10;- Nắm vững cách viết API trong Flask...&#10;&#10;```python&#10;@app.route('/api/hello')&#10;def hello():&#10;    return jsonify({'msg': 'hi'})&#10;```" class="w-full px-3 py-2 rounded border border-gray-300 bg-white font-mono text-[11px] text-gray-900 focus:border-[#0056D2] focus:outline-none"></textarea>
+                </div>
+
+                <button type="submit" class="w-full py-2.5 rounded bg-[#0056D2] hover:bg-[#00419E] text-white font-bold transition shadow-sm">
+                    Lưu & Xuất bản Bài Giảng Mới
+                </button>
+            </form>
+        </div>
+
+        <!-- Cột phải (7 cols): Form Thêm Bài Tập Thực Hành & Bộ Test Cases -->
+        <div class="lg:col-span-7 bg-white border border-gray-200 rounded-lg p-6 shadow-sm space-y-4">
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-gray-200">
+                <h2 class="text-base font-bold text-[#1F1F1F]">
+                    2. Bổ sung Bài Tập Thực Hành & Test Cases
+                </h2>
+                <div class="flex flex-wrap items-center gap-1.5 text-[11px]">
+                    <span class="text-gray-500 font-semibold">Mẫu khung code:</span>
+                    <button type="button" onclick="fillExerciseTemplate('basic')" class="px-2 py-1 rounded bg-gray-100 hover:bg-gray-200 text-gray-800 font-bold transition">
+                        Python Cơ bản
+                    </button>
+                    <button type="button" onclick="fillExerciseTemplate('flask_api')" class="px-2 py-1 rounded bg-[#F0F6FF] hover:bg-blue-100 text-[#0056D2] font-bold transition">
+                        Flask REST API
+                    </button>
+                    <button type="button" onclick="fillExerciseTemplate('flask_sql')" class="px-2 py-1 rounded bg-emerald-50 hover:bg-emerald-100 text-[#0E8043] font-bold transition">
+                        Flask + SQL + API
+                    </button>
+                </div>
+            </div>
+
+            <form method="POST" action="{{ url_for('main.create_exercise') }}" class="space-y-3.5 text-xs">
+                <div class="grid sm:grid-cols-2 gap-3">
+                    <div>
+                        <label class="block font-bold text-gray-700 mb-1">Thuộc Node Kỹ năng (DAG):</label>
+                        <select name="skill_id" required class="w-full px-3 py-2 rounded border border-gray-300 bg-white text-gray-900 focus:border-[#0056D2] focus:outline-none">
+                            {% for s in skills %}
+                            <option value="{{ s.id }}">{{ s.name }} (Tier {{ s.tier }})</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block font-bold text-gray-700 mb-1">Gắn với Bài giảng Lý thuyết:</label>
+                        <select name="lesson_id" class="w-full px-3 py-2 rounded border border-gray-300 bg-white text-gray-900 focus:border-[#0056D2] focus:outline-none">
+                            <option value="">-- Không gắn cố định (Tự chọn) --</option>
+                            {% for l in lessons %}
+                            <option value="{{ l.id }}">{{ l.title }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+
+                <div class="grid sm:grid-cols-12 gap-3">
+                    <div class="sm:col-span-6">
+                        <label class="block font-bold text-gray-700 mb-1">Tiêu đề Bài tập:</label>
+                        <input type="text" id="ex-title-input" name="title" required placeholder="VD: Thực hành Flask + SQL: Quản lý Sinh viên qua API" class="w-full px-3 py-2 rounded border border-gray-300 bg-white text-gray-900 focus:border-[#0056D2] focus:outline-none">
+                    </div>
+                    <div class="sm:col-span-3">
+                        <label class="block font-bold text-gray-700 mb-1">Độ khó:</label>
+                        <select name="difficulty" class="w-full px-3 py-2 rounded border border-gray-300 bg-white text-gray-900">
+                            <option value="easy">Easy (Dễ)</option>
+                            <option value="medium" selected>Medium (Vừa)</option>
+                            <option value="hard">Hard (Khó)</option>
+                        </select>
+                    </div>
+                    <div class="sm:col-span-3">
+                        <label class="block font-bold text-gray-700 mb-1">Điểm thưởng XP:</label>
+                        <input type="number" name="xp_reward" value="80" min="10" step="10" class="w-full px-3 py-2 rounded border border-gray-300 bg-white text-gray-900">
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block font-bold text-gray-700 mb-1">Nội dung Đề bài & Yêu cầu (Markdown):</label>
+                    <textarea id="ex-problem-input" name="problem_statement" rows="3" required placeholder="Mô tả yêu cầu bài tập, định dạng đầu vào (Input) và đầu ra (Output)..." class="w-full px-3 py-2 rounded border border-gray-300 bg-white text-gray-900 focus:border-[#0056D2] focus:outline-none"></textarea>
+                </div>
+
+                <div>
+                    <label class="block font-bold text-gray-700 mb-1">Khung Code Mẫu cho Sinh viên (`starter_code` có vị trí `# TODO`):</label>
+                    <textarea id="ex-starter-input" name="starter_code_python" rows="7" required placeholder="import sys&#10;# Viết khung code có đánh dấu # TODO để sinh viên hoàn thiện..." class="w-full px-3 py-2 rounded border border-gray-300 bg-slate-900 text-emerald-300 font-mono text-[11px] focus:border-[#0056D2] focus:outline-none"></textarea>
+                </div>
+
+                <div>
+                    <label class="block font-bold text-gray-700 mb-1">Gợi ý từng bước cho Trợ lý AI (Mỗi dòng 1 gợi ý):</label>
+                    <textarea id="ex-hints-input" name="hints_text" rows="2" placeholder="Gợi ý 1: Kiểm tra lại câu lệnh SELECT trong hàm...&#10;Gợi ý 2: Trả về kết quả qua jsonify()..." class="w-full px-3 py-1.5 rounded border border-gray-300 bg-white text-gray-900"></textarea>
+                </div>
+
+                <!-- Bộ Test Cases chấm tự động -->
+                <div class="p-3.5 rounded-lg bg-[#F5F7F8] border border-gray-200 space-y-2.5">
+                    <div class="flex items-center justify-between">
+                        <span class="font-bold text-gray-800">Bộ Test Cases Chấm Tự Động (Input &rarr; Output chuẩn)</span>
+                        <span class="text-[11px] text-gray-500">Test #1 & #2 hiển thị mẫu, Test #3 là test ẩn</span>
+                    </div>
+                    <div class="grid sm:grid-cols-3 gap-2.5">
+                        <div class="bg-white p-2.5 rounded border border-gray-200 space-y-1.5">
+                            <span class="font-bold text-[#0056D2] text-[11px] block">Test Case #1 (Mẫu)</span>
+                            <input type="hidden" name="tc_is_sample" value="1">
+                            <textarea id="tc1-in" name="tc_input" rows="2" placeholder="Input #1" class="w-full px-2 py-1 rounded border border-gray-300 font-mono text-[11px]"></textarea>
+                            <textarea id="tc1-out" name="tc_output" rows="2" placeholder="Output mong đợi #1" class="w-full px-2 py-1 rounded border border-gray-300 font-mono text-[11px]"></textarea>
+                        </div>
+                        <div class="bg-white p-2.5 rounded border border-gray-200 space-y-1.5">
+                            <span class="font-bold text-[#0056D2] text-[11px] block">Test Case #2 (Mẫu)</span>
+                            <input type="hidden" name="tc_is_sample" value="2">
+                            <textarea id="tc2-in" name="tc_input" rows="2" placeholder="Input #2" class="w-full px-2 py-1 rounded border border-gray-300 font-mono text-[11px]"></textarea>
+                            <textarea id="tc2-out" name="tc_output" rows="2" placeholder="Output mong đợi #2" class="w-full px-2 py-1 rounded border border-gray-300 font-mono text-[11px]"></textarea>
+                        </div>
+                        <div class="bg-white p-2.5 rounded border border-gray-200 space-y-1.5">
+                            <span class="font-bold text-amber-700 text-[11px] block">Test Case #3 (Test Ẩn)</span>
+                            <textarea id="tc3-in" name="tc_input" rows="2" placeholder="Input #3 (Ẩn)" class="w-full px-2 py-1 rounded border border-gray-300 font-mono text-[11px]"></textarea>
+                            <textarea id="tc3-out" name="tc_output" rows="2" placeholder="Output mong đợi #3" class="w-full px-2 py-1 rounded border border-gray-300 font-mono text-[11px]"></textarea>
+                        </div>
+                    </div>
+                </div>
+
+                <button type="submit" class="w-full py-2.5 rounded bg-[#0E8043] hover:bg-emerald-800 text-white font-bold transition shadow-sm">
+                    Tạo Bài Tập Thực Hành & Bộ Test Case Chấm Tự Động
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- DANH SÁCH QUẢN LÝ BÀI GIẢNG & BÀI TẬP HIỆN CÓ -->
+    <div class="grid lg:grid-cols-12 gap-8">
+        <!-- Danh sách Bài giảng (5 cols) -->
+        <div class="lg:col-span-5 bg-white border border-gray-200 rounded-lg p-6 shadow-sm space-y-3">
+            <h2 class="text-base font-bold text-[#1F1F1F] pb-2.5 border-b border-gray-200 flex items-center justify-between">
+                <span>Danh sách Bài Giảng ({{ lessons|length }})</span>
+            </h2>
+            <div class="divide-y divide-gray-200 text-xs max-h-80 overflow-y-auto pr-1">
+                {% for l in lessons %}
+                <div class="py-2.5 flex items-center justify-between gap-2">
+                    <div class="min-w-0">
+                        <a href="{{ url_for('main.lesson_detail', slug=l.slug) }}" class="font-bold text-[#1F1F1F] hover:text-[#0056D2] block truncate">
+                            {{ l.title }}
+                        </a>
+                        <span class="text-[11px] text-gray-500">Thứ tự: #{{ l.order_index }} • +{{ l.xp_reward }} XP</span>
+                    </div>
+                    <div class="flex items-center gap-1.5 shrink-0">
+                        <a href="{{ url_for('main.lesson_detail', slug=l.slug) }}" class="px-2 py-1 rounded bg-[#F0F6FF] text-[#0056D2] font-bold">Xem</a>
+                        <form method="POST" action="{{ url_for('main.delete_lesson', lesson_id=l.id) }}" onsubmit="return confirm('Xóa bài giảng này?');">
+                            <button type="submit" class="px-2 py-1 rounded bg-red-50 text-red-600 hover:bg-red-100 font-bold" title="Xóa bài giảng">
+                                </button>
+                        </form>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+
+        <!-- Danh sách Bài tập Thực hành (7 cols) -->
+        <div class="lg:col-span-7 bg-white border border-gray-200 rounded-lg p-6 shadow-sm space-y-3">
+            <h2 class="text-base font-bold text-[#1F1F1F] pb-2.5 border-b border-gray-200 flex items-center justify-between">
+                <span>Danh sách Bài Tập Thực Hành ({{ exercises|length }})</span>
+            </h2>
+            <div class="divide-y divide-gray-200 text-xs max-h-80 overflow-y-auto pr-1">
+                {% for ex in exercises %}
+                <div class="py-2.5 flex items-center justify-between gap-3">
+                    <div class="min-w-0">
+                        <a href="{{ url_for('judge.workspace', slug=ex.slug) }}" class="font-bold text-[#1F1F1F] hover:text-[#0056D2] block truncate">
+                            {{ ex.title }}
+                        </a>
+                        <div class="flex flex-wrap items-center gap-2 mt-0.5 text-[11px] text-gray-500">
+                            <span class="px-1.5 py-0.2 rounded bg-gray-100 font-bold uppercase text-gray-700">{{ ex.difficulty }}</span>
+                            <span>+{{ ex.xp_reward }} XP</span>
+                            <span>• {{ ex.test_cases|length }} Test cases</span>
+                            {% if ex.skill %}<span>• {{ ex.skill.name }}</span>{% endif %}
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-1.5 shrink-0">
+                        <a href="{{ url_for('judge.workspace', slug=ex.slug) }}" class="px-2.5 py-1 rounded bg-[#0E8043] text-white font-bold">
+                            Mở Lab
+                        </a>
+                        <form method="POST" action="{{ url_for('main.delete_exercise', exercise_id=ex.id) }}" onsubmit="return confirm('Xóa bài tập thực hành này?');">
+                            <button type="submit" class="px-2 py-1 rounded bg-red-50 text-red-600 hover:bg-red-100 font-bold" title="Xóa bài tập">
+                                </button>
+                        </form>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
+    <!-- PHẦN REVIEW CODE & QUẢN LÝ TÀI KHOẢN -->
+    <div class="grid lg:grid-cols-12 gap-8">
+        <!-- Left 7 Columns: Mentor Chấm & Nhận xét bài làm của Người học -->
+        <div class="lg:col-span-7 bg-white border border-gray-200 rounded-lg p-6 shadow-sm space-y-4">
+            <h2 class="text-lg font-bold text-[#1F1F1F] pb-3 border-b border-gray-200">
+                Nhận xét Bài làm của Người học (Mentor Code Review)
+            </h2>
+
+            {% if submissions %}
+                <div class="space-y-4">
+                    {% for sub in submissions %}
+                    <div class="p-4 rounded-lg bg-[#F5F7F8] border border-gray-200 space-y-3 text-xs">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <span class="font-bold text-[#1F1F1F] text-sm">{{ sub.user.username }}</span>
+                                <span class="text-gray-500 mx-1">•</span>
+                                <span class="font-semibold text-[#0056D2]">{{ sub.exercise.title if sub.exercise else 'Bài tập' }}</span>
+                            </div>
+                            <span class="px-2.5 py-0.5 rounded font-bold
+                                {% if sub.status == 'AC' %}bg-emerald-50 text-[#0E8043] border border-emerald-200
+                                {% else %}bg-red-50 text-red-700 border border-red-200{% endif %}">
+                                {{ sub.status }} ({{ sub.passed_test_cases }}/{{ sub.total_test_cases }} test)
+                            </span>
+                        </div>
+
+                        <pre class="bg-slate-900 text-slate-100 p-3 rounded font-mono text-[11px] overflow-x-auto">{{ sub.source_code }}</pre>
+
+                        <form method="POST" action="{{ url_for('main.review_submission', submission_id=sub.id) }}" class="flex gap-2">
+                            <input type="text" name="mentor_comment" value="{{ sub.mentor_comment or '' }}" placeholder="Nhập nhận xét hoặc góp ý tối ưu code cho học viên..." class="flex-1 px-3 py-2 rounded border border-gray-300 bg-white text-gray-900 focus:border-[#0056D2] focus:outline-none">
+                            <button type="submit" class="px-4 py-2 rounded bg-[#0056D2] hover:bg-[#00419E] text-white font-bold transition">
+                                Lưu Nhận xét
+                            </button>
+                        </form>
+                    </div>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <p class="text-xs text-gray-500">Chưa có bài nộp nào từ học viên.</p>
+            {% endif %}
+        </div>
+
+        <!-- Right 5 Columns: Tiến độ Học viên & Quản lý Phân quyền (Admin) -->
+        <div class="lg:col-span-5 bg-white border border-gray-200 rounded-lg p-6 shadow-sm space-y-4">
+            <h2 class="text-lg font-bold text-[#1F1F1F] pb-3 border-b border-gray-200">
+                Quản lý Tài khoản & Tiến độ Lộ trình
+            </h2>
+
+            <div class="divide-y divide-gray-200 text-xs">
+                {% for u in learners %}
+                <div class="py-3.5 flex items-center justify-between gap-2">
+                    <div>
+                        <p class="font-bold text-[#1F1F1F] text-sm">{{ u.username }} <span class="text-xs font-normal text-gray-500">({{ u.email }})</span></p>
+                        <p class="text-gray-600 mt-0.5">
+                            XP: <strong class="text-[#0056D2]">{{ u.total_xp }}</strong> • Chuỗi: <strong>{{ u.current_streak }} ngày</strong> • {{ u.placement_level }}
+                        </p>
+                    </div>
+
+                    {% if current_user.role == 'admin' %}
+                    <form method="POST" action="{{ url_for('main.update_user_role', user_id=u.id) }}" class="flex items-center gap-1.5">
+                        <select name="role" class="px-2 py-1 rounded border border-gray-300 bg-white font-semibold">
+                            <option value="learner" {% if u.role == 'learner' %}selected{% endif %}>Người học</option>
+                            <option value="instructor" {% if u.role == 'instructor' %}selected{% endif %}>Mentor/GV</option>
+                            <option value="admin" {% if u.role == 'admin' %}selected{% endif %}>Admin</option>
+                        </select>
+                        <button type="submit" class="px-2.5 py-1 rounded bg-gray-800 text-white font-bold">Lưu</button>
+                    </form>
+                    {% else %}
+                    <span class="px-2 py-1 rounded bg-gray-100 font-bold uppercase text-gray-700">{{ u.role }}</span>
+                    {% endif %}
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function fillSampleLesson() {
+    document.getElementById('lesson-title-input').value = '[CNTT1188 - Chuyên đề] Xây dựng REST API Quản lý Sinh viên với Flask & SQLite';
+    document.getElementById('lesson-content-input').value =
+`## 1. Mục tiêu Bài giảng
+- Hiểu cách kết nối **Python Flask** với Cơ sở dữ liệu **SQLite** (\`sqlite3\`).
+- Xây dựng API \`GET /api/students\` để thống kê điểm trung bình từ bảng SQL.
+
+## 2. Cấu trúc Code Mẫu Flask + SQL
+\`\`\`python
+from flask import Flask, jsonify
+import sqlite3
+
+app = Flask(__name__)
+
+@app.route("/api/students/< major >")
+def get_students_by_major(major):
+    # Truy vấn danh sách sinh viên theo chuyên ngành
+    return jsonify({"major": major, "count": 10})
+\`\`\``;
+}
+
+async function fetchSmartdocIntoForm() {
+    const urlEl = document.getElementById('mp-smartdoc-url');
+    const statusEl = document.getElementById('mp-smartdoc-status');
+    statusEl.classList.remove('hidden');
+    statusEl.textContent = '⏳ Đang gọi API fit.neu.edu.vn/smartdoc...';
+    try {
+        const res = await fetch(`/skills/api/smartdoc-preview?url=${encodeURIComponent(urlEl.value)}`);
+        const data = await res.json();
+        if (!data.ok) {
+            statusEl.textContent = '❌ Lỗi: ' + (data.error || 'Không lấy được dữ liệu');
+            return;
+        }
+        document.getElementById('lesson-title-input').value = `[SmartDoc Chương ${data.chap}] ${data.chapter_title}`;
+        document.getElementById('lesson-content-input').value = data.content_markdown;
+        statusEl.textContent = `✅ Đã tải thành công Chương ${data.chap}: ${data.chapter_title} (${data.room_name})! Hãy bấm Lưu bên dưới.`;
+    } catch (e) {
+        statusEl.textContent = '❌ Không thể kết nối tới API SmartDoc.';
+    }
+}
+
+function fillExerciseTemplate(kind) {
+    const titleEl = document.getElementById('ex-title-input');
+    const probEl = document.getElementById('ex-problem-input');
+    const codeEl = document.getElementById('ex-starter-input');
+    const hintsEl = document.getElementById('ex-hints-input');
+    const tc1In = document.getElementById('tc1-in');
+    const tc1Out = document.getElementById('tc1-out');
+    const tc2In = document.getElementById('tc2-in');
+    const tc2Out = document.getElementById('tc2-out');
+    const tc3In = document.getElementById('tc3-in');
+    const tc3Out = document.getElementById('tc3-out');
+
+    if (kind === 'basic') {
+        titleEl.value = 'Thực hành: Tạo Thẻ Liên kết Hyperlink HTML5';
+        probEl.value = 'Cho chuỗi văn bản `label` trên một dòng. Hãy hoàn thành hàm `render_link(label)` trả về chuỗi thẻ `<a>label</a>`.';
+        codeEl.value =
+`import sys
+
+def render_link(label: str) -> str:
+    # TODO: Trả về chuỗi thẻ <a> bọc lấy label
+    return ""
+
+if __name__ == '__main__':
+    text = sys.stdin.read().strip()
+    print(render_link(text))`;
+        hintsEl.value = "Dùng f-string: return f'<a>{label}</a>'";
+        tc1In.value = 'Trang chu NEU'; tc1Out.value = '<a>Trang chu NEU</a>';
+        tc2In.value = 'Khoa CNTT'; tc2Out.value = '<a>Khoa CNTT</a>';
+        tc3In.value = 'Hoc Lap Trinh Web'; tc3Out.value = '<a>Hoc Lap Trinh Web</a>';
+    } else if (kind === 'flask_api') {
+        titleEl.value = 'Thực hành Flask API: Tính Điểm Trung Bình Học Phần qua JSON API';
+        probEl.value = 'Cho 2 số nguyên `diem_giua_ky` và `diem_cuoi_ky` trên một dòng. Hãy hoàn thiện Route Flask `POST /api/grade` tính điểm tổng kết theo công thức: `(diem_giua_ky * 40 + diem_cuoi_ky * 60) // 100` và trả về trong JSON `{"total": ...}`.';
+        codeEl.value =
+`import sys
+from flask import Flask, request, jsonify
+
+app = Flask(__name__)
+
+def compute_final_grade(midterm: int, final: int) -> int:
+    # TODO: Tính (midterm * 40 + final * 60) // 100
+    return 0
+
+@app.route("/api/grade", methods=["POST"])
+def grade_api():
+    data = request.get_json() or {}
+    total = compute_final_grade(int(data["midterm"]), int(data["final"]))
+    return jsonify({"total": total}), 200
+
+if __name__ == '__main__':
+    parts = sys.stdin.read().split()
+    if len(parts) >= 2:
+        client = app.test_client()
+        resp = client.post("/api/grade", json={"midterm": int(parts[0]), "final": int(parts[1])})
+        print(resp.get_json()["total"])`;
+        hintsEl.value = "Công thức: return (midterm * 40 + final * 60) // 100\nKiểm tra kết quả trả về từ hàm compute_final_grade.";
+        tc1In.value = '80 90'; tc1Out.value = '86';
+        tc2In.value = '70 80'; tc2Out.value = '76';
+        tc3In.value = '100 90'; tc3Out.value = '94';
+    } else if (kind === 'flask_sql') {
+        titleEl.value = 'Thực hành Flask + SQL: Đếm Số Sinh Viên Đạt Học Bổng qua API';
+        probEl.value = 'Bảng SQL `students(id, name, gpa)` có sẵn 4 sinh viên: `An (85)`, `Binh (72)`, `Chi (91)`, `Dung (65)`. Khi Client gọi `GET /api/scholarship?min_gpa=<G>`, hãy viết câu lệnh SQL `SELECT COUNT(*) FROM students WHERE gpa >= ?` để trả về số lượng sinh viên đủ điểm nhận học bổng.';
+        codeEl.value =
+`import sys
+import sqlite3
+from flask import Flask, request, jsonify
+
+app = Flask(__name__)
+
+db_conn = sqlite3.connect(":memory:", check_same_thread=False)
+db_conn.execute("CREATE TABLE students (id INTEGER PRIMARY KEY, name TEXT, gpa INTEGER)")
+db_conn.executemany(
+    "INSERT INTO students (name, gpa) VALUES (?, ?)",
+    [("An", 85), ("Binh", 72), ("Chi", 91), ("Dung", 65)],
+)
+db_conn.commit()
+
+def count_scholarship_students(conn: sqlite3.Connection, min_gpa: int) -> int:
+    # TODO: Viết câu lệnh SQL SELECT COUNT(*) FROM students WHERE gpa >= ?
+    return 0
+
+@app.route("/api/scholarship", methods=["GET"])
+def scholarship_api():
+    min_g = request.args.get("min_gpa", type=int, default=80)
+    cnt = count_scholarship_students(db_conn, min_g)
+    return jsonify({"min_gpa": min_g, "qualified_count": cnt}), 200
+
+if __name__ == '__main__':
+    raw = sys.stdin.read().strip()
+    if raw:
+        client = app.test_client()
+        resp = client.get(f"/api/scholarship?min_gpa={int(raw)}")
+        print(resp.get_json()["qualified_count"])`;
+        hintsEl.value = "Gợi ý 1: Dùng row = conn.execute('SELECT COUNT(*) FROM students WHERE gpa >= ?', (min_gpa,)).fetchone()\nGợi ý 2: Trả về int(row[0]).";
+        tc1In.value = '80'; tc1Out.value = '2';
+        tc2In.value = '70'; tc2Out.value = '3';
+        tc3In.value = '90'; tc3Out.value = '1';
+    }
+}
+</script>
+{% endblock %}

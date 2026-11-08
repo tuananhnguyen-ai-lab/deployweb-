@@ -1,0 +1,148 @@
+{% extends "base.html" %}
+{% block title %}{{ lesson.title }}{% endblock %}
+
+{% block extra_head %}
+<style>
+    .smartdoc-content img {
+        max-width: 100%;
+        height: auto;
+        margin: 1rem auto;
+        display: block;
+        border-radius: 6px;
+    }
+    .smartdoc-content table {
+        width: 100%;
+        border-collapse: collapse;
+        margin: 1rem 0;
+        font-size: 0.92rem;
+    }
+    .smartdoc-content th, .smartdoc-content td {
+        border: 1px solid #cbd5e1;
+        padding: 0.55rem 0.8rem;
+        vertical-align: top;
+    }
+    .smartdoc-content th {
+        background-color: #f8fafc;
+        font-weight: 700;
+    }
+    .smartdoc-content ul {
+        list-style-type: disc;
+        padding-left: 1.5rem;
+        margin: 0.6rem 0;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="bg-white border-b border-slate-200 sticky top-14 z-40">
+    <div class="w-full px-4 sm:px-6 lg:px-8 sm:px-6 lg:px-8 py-2.5 flex flex-wrap items-center justify-between gap-3">
+        <a href="{{ url_for('skills.tree_view') }}" class="text-sm font-semibold text-slate-600 hover:text-[#0056D2]">
+            Quay lại Cây lộ trình
+        </a>
+
+        {% if smartdoc_chapters %}
+        <div class="flex items-center gap-2">
+            <span class="text-xs font-semibold text-slate-500">Chọn chương:</span>
+            <select onchange="if(this.value) window.location.href=this.value;"
+                    class="border border-slate-300 rounded px-3 py-1.5 text-sm font-semibold text-slate-800 bg-white focus:outline-none focus:border-[#0056D2]">
+                {% for ch in smartdoc_chapters %}
+                <option value="{{ url_for('main.lesson_detail', slug=ch.slug) }}" {% if ch.is_current %}selected{% endif %}>
+                    Chương {{ ch.chap }}: {{ ch.title }}
+                </option>
+                {% endfor %}
+            </select>
+        </div>
+        {% endif %}
+
+        {% if related_exercises %}
+        <a href="{{ url_for('judge.workspace', slug=related_exercises[0].slug) }}"
+           class="px-3.5 py-1.5 rounded bg-[#0056D2] hover:bg-blue-700 text-white text-xs sm:text-sm font-semibold">
+            Làm bài tập thực hành
+        </a>
+        {% endif %}
+    </div>
+</div>
+
+<div class="w-full px-4 sm:px-6 lg:px-8 py-5">
+    <div class="w-full grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
+
+        {% if chapter_steps and chapter_steps|length > 1 %}
+        <aside class="lg:col-span-3 bg-white border border-slate-200 rounded-lg p-4 lg:sticky lg:top-28">
+            <h3 class="text-xs font-bold uppercase text-slate-500 mb-2 pb-2 border-b border-slate-100">
+                Mục lục trong chương
+            </h3>
+            <ul class="space-y-1 max-h-[70vh] overflow-y-auto text-xs sm:text-sm">
+                {% for st in chapter_steps %}
+                <li>
+                    <a href="#{{ st.anchor }}"
+                       class="block py-1.5 px-2 rounded hover:bg-slate-100 text-slate-700 hover:text-[#0056D2] break-words {% if st.level > 1 %}pl-5 text-xs text-slate-600{% else %}font-semibold{% endif %}">
+                        {{ st.title }}
+                    </a>
+                </li>
+                {% endfor %}
+            </ul>
+        </aside>
+        {% endif %}
+
+        <div class="{% if chapter_steps and chapter_steps|length > 1 %}lg:col-span-9{% else %}lg:col-span-12{% endif %}">
+            <div class="w-full bg-white border border-slate-200 rounded-lg p-6 sm:p-8 lg:p-10">
+                <div class="pb-4 mb-6 border-b border-slate-200 flex flex-wrap items-center justify-between gap-2">
+                    <h1 class="text-xl sm:text-2xl font-bold text-slate-900">
+                        {{ lesson.title }}
+                    </h1>
+                    <a href="{{ smartdoc_live_url }}" target="_blank" rel="noopener" class="text-xs text-[#0056D2] hover:underline">
+                        Xem bản gốc SmartDoc
+                    </a>
+                </div>
+
+                <div class="prose max-w-none smartdoc-content text-slate-800 leading-relaxed">
+                    {{ html_content | safe }}
+                </div>
+
+                {% if current_chap == 1 and smartdoc_chapters %}
+                <div class="mt-8 pt-6 border-t border-slate-200">
+                    <p class="text-sm font-bold text-slate-800 mb-3">Danh sách các chương trong giáo trình:</p>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
+                        {% for ch in smartdoc_chapters %}
+                        <a href="{{ url_for('main.lesson_detail', slug=ch.slug) }}"
+                           class="p-3 rounded border border-slate-200 hover:border-[#0056D2] hover:bg-blue-50/40 text-sm text-slate-800 font-medium">
+                            <strong>Chương {{ ch.chap }}:</strong> {{ ch.title }}
+                        </a>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endif %}
+
+                <div class="mt-10 pt-6 border-t border-slate-200 flex flex-wrap items-center justify-between gap-3">
+                    <div>
+                        {% if smartdoc_chapters %}
+                            {% for ch in smartdoc_chapters if ch.chap == current_chap + 1 %}
+                            <a href="{{ url_for('main.lesson_detail', slug=ch.slug) }}"
+                               class="px-4 py-2 rounded border border-slate-300 hover:border-[#0056D2] text-sm font-semibold text-slate-700 hover:text-[#0056D2]">
+                                Đọc tiếp Chương {{ ch.chap }}
+                            </a>
+                            {% endfor %}
+                        {% endif %}
+                    </div>
+
+                    {% set first_ex = related_exercises[0] if related_exercises else None %}
+                    <form method="POST" action="{{ url_for('main.complete_lesson', lesson_id=lesson.id) }}">
+                        <input type="hidden" name="time_spent" value="60">
+                        {% if first_ex %}
+                            <input type="hidden" name="next_exercise_slug" value="{{ first_ex.slug }}">
+                        {% endif %}
+                        <button type="submit" class="px-5 py-2 rounded bg-[#0056D2] hover:bg-blue-700 text-white text-sm font-semibold">
+                            {% if first_ex %}
+                                Hoàn thành & Làm bài tập (+{{ lesson.xp_reward }} XP)
+                            {% else %}
+                                Đánh dấu đã đọc (+{{ lesson.xp_reward }} XP)
+                            {% endif %}
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+    </div>
+</div>
+{% endblock %}

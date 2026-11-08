@@ -1,0 +1,122 @@
+{% extends "base.html" %}
+{% block title %}Trợ lý AI - Giải thích lỗi code{% endblock %}
+{% block content %}
+<div class="max-w-4xl mx-auto px-4 py-8 space-y-6">
+  <div>
+    <h1 class="text-2xl font-extrabold text-gray-900">🤖 Trợ lý AI giải thích lỗi</h1>
+    <p class="text-sm text-gray-500 mt-1">Dán code và thông báo lỗi, chọn mức gợi ý phù hợp. Trợ lý trả lời bằng tiếng Việt.</p>
+  </div>
+
+  <section class="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm space-y-4">
+    <div class="flex flex-wrap gap-2 text-xs">
+      <span class="text-gray-500 py-1">Thử nhanh:</span>
+      <button type="button" class="example px-3 py-1 rounded-full bg-gray-100 hover:bg-gray-200 text-gray-700"
+              data-error="Uncaught TypeError: Cannot read properties of null (reading 'value')"
+              data-code="document.getElementById('name').value">Lỗi null trong DOM</button>
+      <button type="button" class="example px-3 py-1 rounded-full bg-gray-100 hover:bg-gray-200 text-gray-700"
+              data-error="Tại sao vòng lặp for này chạy vô hạn?"
+              data-code="for (let i = 0; i < 5; i--) { console.log(i); }">Vòng lặp vô hạn</button>
+    </div>
+
+    <label class="block">
+      <span class="text-sm font-semibold text-gray-700">Code của bạn <span class="text-gray-400 font-normal">(không bắt buộc)</span></span>
+      <textarea id="code" rows="6" placeholder="Dán đoạn code vào đây..."
+                class="mt-1 w-full border border-gray-300 rounded-xl px-3 py-2 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-[#0056D2]"></textarea>
+    </label>
+
+    <label class="block">
+      <span class="text-sm font-semibold text-gray-700">Thông báo lỗi hoặc câu hỏi</span>
+      <textarea id="error" rows="2" placeholder="Ví dụ: Uncaught TypeError: ... hoặc Vì sao nút không bấm được?"
+                class="mt-1 w-full border border-gray-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#0056D2]"></textarea>
+    </label>
+
+    <div>
+      <span class="text-sm font-semibold text-gray-700">Mức gợi ý</span>
+      <div class="grid sm:grid-cols-3 gap-3 mt-2" id="levels">
+        <label class="level-card cursor-pointer border-2 border-gray-200 rounded-xl p-3 has-[:checked]:border-[#0056D2] has-[:checked]:bg-[#EEF4FF]">
+          <input type="radio" name="level" value="1" checked class="sr-only">
+          <div class="font-bold text-sm">Mức 1 · Gợi ý hướng</div>
+          <div class="text-xs text-gray-500 mt-1">Tự suy nghĩ, AI chỉ gợi ý.</div>
+        </label>
+        <label class="level-card cursor-pointer border-2 border-gray-200 rounded-xl p-3 has-[:checked]:border-[#0056D2] has-[:checked]:bg-[#EEF4FF]">
+          <input type="radio" name="level" value="2" class="sr-only">
+          <div class="font-bold text-sm">Mức 2 · Chỉ chỗ sai</div>
+          <div class="text-xs text-gray-500 mt-1">Chỉ ra dòng hoặc khái niệm gây lỗi.</div>
+        </label>
+        <label class="level-card cursor-pointer border-2 border-gray-200 rounded-xl p-3 has-[:checked]:border-[#0056D2] has-[:checked]:bg-[#EEF4FF]">
+          <input type="radio" name="level" value="3" class="sr-only">
+          <div class="font-bold text-sm">Mức 3 · Giải thích đầy đủ</div>
+          <div class="text-xs text-gray-500 mt-1">Nguyên nhân và cách sửa, có ví dụ.</div>
+        </label>
+      </div>
+    </div>
+
+    <div class="flex items-center justify-between gap-3 pt-2">
+      <p id="status" class="text-sm text-gray-500"></p>
+      <button id="ask" class="px-6 py-2.5 rounded-xl bg-[#0056D2] hover:bg-[#00419E] text-white font-bold text-sm disabled:bg-gray-300">Hỏi trợ lý</button>
+    </div>
+  </section>
+
+  <section id="result" class="hidden bg-white rounded-2xl border border-gray-200 p-6 shadow-sm">
+    <div class="flex items-center justify-between mb-3">
+      <h2 class="font-bold text-gray-900">Gợi ý từ trợ lý</h2>
+      <button id="copy" type="button" class="text-xs px-3 py-1 rounded-lg bg-gray-100 hover:bg-gray-200">Sao chép</button>
+    </div>
+    <div id="answer" class="whitespace-pre-wrap text-sm leading-relaxed text-gray-800"></div>
+  </section>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+(function () {
+  const codeEl = document.getElementById("code");
+  const errEl = document.getElementById("error");
+  const btn = document.getElementById("ask");
+  const status = document.getElementById("status");
+  const result = document.getElementById("result");
+  const answer = document.getElementById("answer");
+
+  document.querySelectorAll(".example").forEach((b) => {
+    b.addEventListener("click", () => {
+      codeEl.value = b.dataset.code;
+      errEl.value = b.dataset.error;
+    });
+  });
+
+  document.getElementById("copy").addEventListener("click", () => {
+    navigator.clipboard.writeText(answer.textContent);
+    status.textContent = "Đã sao chép gợi ý.";
+  });
+
+  btn.addEventListener("click", async () => {
+    const error = errEl.value.trim();
+    if (!error) { status.textContent = "Hãy nhập thông báo lỗi hoặc câu hỏi."; errEl.focus(); return; }
+    const level = Number(document.querySelector('input[name="level"]:checked').value);
+
+    btn.disabled = true;
+    status.textContent = "Trợ lý đang suy nghĩ...";
+    result.classList.add("hidden");
+    try {
+      const res = await fetch("{{ url_for('ai.api_explain') }}", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Accept: "application/json" },
+        body: JSON.stringify({ code: codeEl.value, error, level }),
+      });
+      const data = await res.json().catch(() => ({ ok: false, error: `Máy chủ trả về lỗi ${res.status}` }));
+      if (data.ok) {
+        answer.textContent = data.answer;
+        result.classList.remove("hidden");
+        status.textContent = "";
+      } else {
+        status.textContent = data.error;
+      }
+    } catch (e) {
+      status.textContent = "Không kết nối được máy chủ.";
+    } finally {
+      btn.disabled = false;
+    }
+  });
+})();
+</script>
+{% endblock %}

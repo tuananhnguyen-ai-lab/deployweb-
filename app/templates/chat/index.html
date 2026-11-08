@@ -1,0 +1,193 @@
+{% extends "base.html" %}
+{% block title %}Chat - Phòng học{% endblock %}
+{% block content %}
+<div class="max-w-6xl mx-auto px-4 py-8 grid lg:grid-cols-[280px_1fr] gap-6">
+
+  <aside class="space-y-4">
+    <div class="bg-white rounded-2xl border border-gray-200 p-4 shadow-sm">
+      <h2 class="font-bold text-gray-900 mb-3">💬 Phòng của bạn</h2>
+      {% for room, title in rooms %}
+        <a href="{{ url_for('chat.index', room=room.id) }}"
+           class="flex items-center gap-2 px-3 py-2.5 rounded-xl text-sm mb-1 transition
+                  {% if current and room.id == current.id %}bg-[#EEF4FF] text-[#0056D2] font-bold{% else %}text-gray-700 hover:bg-gray-50{% endif %}">
+          <span>{{ '👥' if room.type == 'group' else '👤' }}</span>
+          <span class="truncate">{{ title }}</span>
+        </a>
+      {% else %}
+        <p class="text-sm text-gray-500 py-2">Chưa có phòng nào. Hãy ghép cặp bạn học ở trang <a class="text-[#0056D2] underline" href="{{ url_for('buddy.index') }}">Bạn học</a>.</p>
+      {% endfor %}
+    </div>
+
+    <form method="POST" action="{{ url_for('chat.create_group') }}" class="bg-white rounded-2xl border border-gray-200 p-4 shadow-sm space-y-3">
+      <h2 class="font-bold text-gray-900">👥 Tạo nhóm học</h2>
+      {% if partners %}
+        <input name="name" maxlength="100" required placeholder="Tên nhóm, ví dụ: Nhóm HTML tuần này"
+               class="w-full border border-gray-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#0056D2]">
+        <p class="text-xs text-gray-500">Chọn bạn đã ghép đôi để đưa vào nhóm:</p>
+        <div class="max-h-40 overflow-y-auto space-y-1">
+          {% for u in partners %}
+          <label class="flex items-center gap-2 text-sm px-2 py-1 rounded-lg hover:bg-gray-50">
+            <input type="checkbox" name="member_ids" value="{{ u.id }}" class="w-4 h-4"> {{ u.username }}
+          </label>
+          {% endfor %}
+        </div>
+        <button class="w-full py-2.5 rounded-xl bg-[#0056D2] hover:bg-[#00419E] text-white text-sm font-bold">Tạo nhóm</button>
+      {% else %}
+        <p class="text-sm text-gray-500">Ghép đôi với bạn học trước, sau đó bạn có thể tạo nhóm cùng họ.</p>
+      {% endif %}
+    </form>
+  </aside>
+
+  <main class="space-y-6">
+    {% if current %}
+    <section class="bg-white rounded-2xl border border-gray-200 p-5 shadow-sm">
+      <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
+        <div>
+          <h2 class="font-bold text-gray-900 text-lg">{{ current_title }}</h2>
+          <p class="text-xs text-gray-500">{{ 'Nhóm học' if current.type == 'group' else 'Phòng riêng' }} · tin mới cập nhật mỗi 2 giây</p>
+        </div>
+        {% if other_id %}
+        <div class="flex gap-2">
+          <form method="POST" action="{{ url_for('safety.report') }}">
+            <input type="hidden" name="target_id" value="{{ other_id }}">
+            <input type="hidden" name="reason" value="Khác">
+            <input type="hidden" name="detail" value="Báo cáo từ phòng chat">
+            <button class="px-3 py-1.5 text-xs font-bold rounded-lg bg-amber-50 text-amber-700 hover:bg-amber-100">⚠️ Báo cáo</button>
+          </form>
+          <form method="POST" action="{{ url_for('safety.block') }}"
+                onsubmit="return confirm('Chặn người này? Bạn sẽ không nhắn tin được nữa.')">
+            <input type="hidden" name="target_id" value="{{ other_id }}">
+            <button class="px-3 py-1.5 text-xs font-bold rounded-lg bg-red-50 text-red-700 hover:bg-red-100">🚫 Chặn</button>
+          </form>
+        </div>
+        {% endif %}
+      </div>
+
+      <div id="messages" class="h-80 overflow-y-auto rounded-xl bg-gray-50 border border-gray-100 p-4 space-y-3">
+        <p id="empty" class="text-center text-sm text-gray-400 {% if messages %}hidden{% endif %}">Chưa có tin nhắn. Hãy chào bạn học nhé 👋</p>
+        {% for m in messages %}
+        <div class="flex {{ 'justify-end' if m.user_id == current_user.id else 'justify-start' }}">
+          <div class="max-w-[75%] rounded-2xl px-3.5 py-2 text-sm shadow-sm
+                      {{ 'bg-[#0056D2] text-white' if m.user_id == current_user.id else 'bg-white text-gray-800 border border-gray-100' }}">
+            {% if m.user_id != current_user.id %}<div class="text-xs font-bold text-[#0056D2] mb-0.5">{{ m.username }}</div>{% endif %}
+            <div class="whitespace-pre-wrap break-words">{{ m.content }}</div>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+
+      <form id="send-form" class="flex gap-2 mt-4">
+        <input id="msg-input" maxlength="500" autocomplete="off" {% if not can_send %}disabled{% endif %}
+               placeholder="{{ 'Nhập tin nhắn...' if can_send else 'Không thể gửi tin trong phòng này' }}"
+               class="flex-1 border border-gray-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#0056D2] disabled:bg-gray-100">
+        <button id="send-btn" {% if not can_send %}disabled{% endif %}
+                class="px-5 py-2.5 rounded-xl bg-[#0056D2] hover:bg-[#00419E] text-white text-sm font-bold disabled:bg-gray-300">Gửi</button>
+      </form>
+      <p id="chat-error" class="text-sm text-red-600 mt-2 hidden"></p>
+    </section>
+    {% else %}
+    <div class="bg-white rounded-2xl border border-dashed border-gray-300 p-10 text-center text-gray-500">
+      Chọn một phòng ở bên trái, hoặc ghép đôi bạn học để bắt đầu trò chuyện.
+    </div>
+    {% endif %}
+  </main>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+{% if current %}
+<script>
+(function () {
+  const ROOM_ID = {{ current.id }};
+  const ME = {{ current_user.id }};
+  const API = `/chat/api/rooms/${ROOM_ID}/messages`;
+  const box = document.getElementById("messages");
+  const empty = document.getElementById("empty");
+  const input = document.getElementById("msg-input");
+  const sendBtn = document.getElementById("send-btn");
+  const form = document.getElementById("send-form");
+  const errBox = document.getElementById("chat-error");
+  const seen = new Set({{ messages | map(attribute='id') | list | tojson }});
+  let lastId = {{ messages[-1]['id'] if messages else 0 }};
+
+  function showError(text) {
+    errBox.textContent = text;
+    errBox.classList.remove("hidden");
+  }
+
+  function addMessage(m) {
+    if (seen.has(m.id)) return;
+    seen.add(m.id);
+    lastId = Math.max(lastId, m.id);
+    empty && empty.classList.add("hidden");
+
+    const mine = m.user_id === ME;
+    const row = document.createElement("div");
+    row.className = "flex " + (mine ? "justify-end" : "justify-start");
+    const bubble = document.createElement("div");
+    bubble.className = "max-w-[75%] rounded-2xl px-3.5 py-2 text-sm shadow-sm " +
+      (mine ? "bg-[#0056D2] text-white" : "bg-white text-gray-800 border border-gray-100");
+    if (!mine) {
+      const name = document.createElement("div");
+      name.className = "text-xs font-bold text-[#0056D2] mb-0.5";
+      name.textContent = m.username;
+      bubble.appendChild(name);
+    }
+    const text = document.createElement("div");
+    text.className = "whitespace-pre-wrap break-words";
+    text.textContent = m.content;
+    bubble.appendChild(text);
+    row.appendChild(bubble);
+    box.appendChild(row);
+    box.scrollTop = box.scrollHeight;
+  }
+
+  function setCanSend(flag) {
+    input.disabled = !flag;
+    sendBtn.disabled = !flag;
+    input.placeholder = flag ? "Nhập tin nhắn..." : "Không thể gửi tin trong phòng này";
+  }
+
+  async function poll() {
+    try {
+      const res = await fetch(`${API}?after=${lastId}`, { headers: { Accept: "application/json" } });
+      const data = await res.json();
+      if (!data.ok) { showError(data.error); return; }
+      data.messages.forEach(addMessage);
+      setCanSend(data.can_send);
+      errBox.classList.add("hidden");
+    } catch (e) {
+      showError("Mất kết nối tới máy chủ, đang thử lại...");
+    }
+  }
+
+  form.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const content = input.value.trim();
+    if (!content) return;
+    sendBtn.disabled = true;
+    try {
+      const res = await fetch(API, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Accept: "application/json" },
+        body: JSON.stringify({ content }),
+      });
+      const data = await res.json();
+      if (!data.ok) { showError(data.error); return; }
+      input.value = "";
+      addMessage(data.message);
+      errBox.classList.add("hidden");
+    } catch (e2) {
+      showError("Gửi thất bại, kiểm tra kết nối rồi thử lại.");
+    } finally {
+      sendBtn.disabled = input.disabled;
+      input.focus();
+    }
+  });
+
+  box.scrollTop = box.scrollHeight;
+  setInterval(poll, 2000);
+})();
+</script>
+{% endif %}
+{% endblock %}

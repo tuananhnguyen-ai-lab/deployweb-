@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+{% block title %}Học Lập Trình Web Theo Lộ Trình{% endblock %}
+
+{% block content %}
+<div class="w-full px-4 sm:px-6 lg:px-8 py-8 space-y-8">
+    <div class="bg-white border border-slate-200 rounded-lg p-6 sm:p-8 grid lg:grid-cols-12 gap-6 items-center">
+        <div class="lg:col-span-7 space-y-4">
+            <h1 class="text-2xl sm:text-3xl font-bold text-slate-900 leading-tight">
+                Học Lập Trình Web Theo Lộ Trình Rõ Ràng
+            </h1>
+            <p class="text-sm sm:text-base text-slate-600 leading-relaxed">
+                Học tuần tự theo <strong>Cây lộ trình (HTML - CSS - JS - DOM - Flask)</strong>, đọc giáo trình SmartDoc FIT-NEU và thực hành viết code có chấm tự động.
+            </p>
+
+            <div class="flex flex-wrap items-center gap-3 pt-2">
+                <a href="{{ url_for('skills.tree_view') }}" class="px-5 py-2.5 rounded bg-[#0056D2] hover:bg-blue-700 text-white font-semibold text-sm">
+                    Xem Cây Lộ Trình
+                </a>
+                <a href="{{ url_for('auth.login') }}" class="px-3 py-2 text-sm font-semibold text-[#0056D2] hover:underline">
+                    Đăng nhập
+                </a>
+            </div>
+        </div>
+
+        <div class="lg:col-span-5 bg-slate-50 border border-slate-200 rounded-lg p-5 space-y-3">
+            <h2 class="text-sm font-bold text-slate-900">
+                Đăng nhập nhanh theo vai trò
+            </h2>
+            <div class="space-y-2 text-xs">
+                <a href="{{ url_for('auth.quick_login', role='learner') }}" class="block p-3 rounded bg-white border border-slate-200 hover:border-[#0056D2]">
+                    <span class="font-bold text-[#0056D2] block">1. Người học (Sinh viên)</span>
+                    <span class="text-slate-600">Đọc bài giảng SmartDoc, làm bài tập code và theo dõi lộ trình.</span>
+                </a>
+                <a href="{{ url_for('auth.quick_login', role='instructor') }}" class="block p-3 rounded bg-white border border-slate-200 hover:border-[#0056D2]">
+                    <span class="font-bold text-emerald-700 block">2. Giảng viên (Mentor)</span>
+                    <span class="text-slate-600">Bổ sung bài giảng, tạo bài tập thực hành và nhận xét bài nộp.</span>
+                </a>
+                <a href="{{ url_for('auth.quick_login', role='admin') }}" class="block p-3 rounded bg-white border border-slate-200 hover:border-[#0056D2]">
+                    <span class="font-bold text-slate-800 block">3. Quản trị viên (Admin)</span>
+                    <span class="text-slate-600">Quản lý tài khoản, câu hỏi kiểm tra và toàn bộ hệ thống.</span>
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <div class="bg-white border border-slate-200 rounded-lg p-6">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-slate-200">
+            <h2 class="text-lg font-bold text-slate-900">Các chủ đề trong lộ trình</h2>
+            <a href="{{ url_for('skills.tree_view') }}" class="text-sm font-semibold text-[#0056D2] hover:underline">
+                Mở Cây Lộ Trình Chi Tiết
+            </a>
+        </div>
+
+        <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-4 mt-4">
+            {% for s in skills %}
+            <div class="p-4 rounded border border-slate-200 bg-slate-50">
+                <span class="text-xs font-semibold text-[#0056D2]">Chặng {{ s.tier }}</span>
+                <h3 class="text-sm font-bold text-slate-900 mt-1">{{ s.name }}</h3>
+                <p class="text-xs text-slate-600 mt-1">{{ s.description }}</p>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+{% endblock %}

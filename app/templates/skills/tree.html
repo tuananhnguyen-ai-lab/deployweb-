@@ -1,0 +1,178 @@
+{% extends "base.html" %}
+{% block title %}Cây Lộ Trình Học Lập Trình Web{% endblock %}
+
+{% block extra_head %}
+<style>
+    .tree-spine {
+        width: 2px;
+        background-color: #94A3B8;
+    }
+    .tree-branch-line {
+        border-top: 2px dashed #94A3B8;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="w-full px-4 sm:px-6 lg:px-8 sm:px-6 lg:px-8 py-5 space-y-5">
+
+    <div class="bg-white border border-slate-200 rounded-lg p-4 sm:px-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+            <h1 class="text-xl sm:text-2xl font-bold text-slate-900">
+                Cây Lộ Trình Học Lập Trình Web
+            </h1>
+            <p class="text-sm text-slate-600 mt-0.5">
+                Chọn <strong>Bài giảng (bên trái)</strong> để đọc lý thuyết, hoặc chọn <strong>Bài tập (bên phải)</strong> để thực hành viết code.
+            </p>
+        </div>
+
+        <div class="flex items-center gap-3 shrink-0 text-sm">
+            <span class="font-semibold text-slate-700">
+                Tiến độ: <strong class="text-[#0056D2]">{{ mastered_count }}/{{ total_nodes }}</strong> chủ đề ({{ progress_pct }}%)
+            </span>
+        </div>
+    </div>
+
+    <div class="w-full bg-white border border-slate-200 rounded-lg p-4 sm:p-6 lg:p-8">
+
+        <div class="flex flex-col items-center">
+            <span class="px-4 py-1 rounded bg-slate-800 text-white text-xs font-bold uppercase tracking-wider">
+                Bắt đầu lộ trình
+            </span>
+            <div class="tree-spine h-6"></div>
+        </div>
+
+        {% for tier_group in roadmap_tiers %}
+        <div class="flex flex-col items-center">
+            <div class="px-4 py-1 rounded bg-blue-50 border border-blue-200 text-[#0056D2] text-xs font-bold">
+                {{ tier_group.label }}
+            </div>
+            <div class="tree-spine h-6"></div>
+        </div>
+
+        {% for node in tier_group.nodes %}
+        <div class="w-full flex flex-col items-center">
+            <!-- Bố cục 3 cột trải rộng 100% toàn màn hình: [Trái: Bài giảng (1fr)] --- [Giữa: Chủ đề (300px)] --- [Phải: Bài tập (1fr)] -->
+            <div class="w-full grid grid-cols-1 md:grid-cols-[1fr_280px_1fr] xl:grid-cols-[1fr_320px_1fr] items-center gap-3 md:gap-0">
+
+                <!-- CỘT TRÁI: BÀI GIẢNG (Dàn hết sang mép trái) -->
+                <div class="w-full min-w-0 flex flex-col gap-2 order-2 md:order-1">
+                    {% if node.lessons %}
+                        {% for l in node.lessons %}
+                        <div class="w-full flex items-center min-w-0">
+                            <a href="{{ url_for('main.lesson_detail', slug=l.slug) }}"
+                               class="w-full flex-1 min-w-0 p-3 rounded border border-slate-300 bg-white hover:border-[#0056D2] hover:bg-blue-50/40 text-xs sm:text-sm flex items-center justify-between gap-3 transition">
+                                <span class="font-medium text-slate-800 break-words leading-snug">
+                                    {{ l.title }}
+                                </span>
+                                {% if l.is_completed %}
+                                <span class="text-emerald-600 font-bold text-xs shrink-0">Đã đọc</span>
+                                {% else %}
+                                <span class="text-[#0056D2] font-semibold text-xs shrink-0">Đọc bài giảng</span>
+                                {% endif %}
+                            </a>
+                            <div class="hidden md:block w-8 lg:w-12 tree-branch-line shrink-0"></div>
+                        </div>
+                        {% endfor %}
+                    {% else %}
+                        <div class="hidden md:block"></div>
+                    {% endif %}
+                </div>
+
+                <!-- CỘT GIỮA: CHỦ ĐỀ CHÍNH -->
+                <div class="w-full min-w-0 flex flex-col items-center order-1 md:order-2">
+                    <div class="w-full rounded-lg p-4 text-center border-2
+                        {% if node.status == 'mastered' %}bg-emerald-50 border-emerald-500 text-slate-900
+                        {% elif node.status in ('unlocked', 'in_progress') %}bg-amber-50 border-amber-400 text-slate-900
+                        {% else %}bg-slate-100 border-slate-300 text-slate-600{% endif %}">
+                        <div class="text-[11px] font-bold uppercase mb-1
+                            {% if node.status == 'mastered' %}text-emerald-700
+                            {% elif node.status in ('unlocked', 'in_progress') %}text-amber-800
+                            {% else %}text-slate-500{% endif %}">
+                            {% if node.status == 'mastered' %}Đã hoàn thành
+                            {% elif node.status in ('unlocked', 'in_progress') %}Đang học
+                            {% else %}Chưa mở khóa{% endif %}
+                        </div>
+                        <h3 class="text-sm sm:text-base font-bold leading-snug break-words">
+                            {{ node.name }}
+                        </h3>
+                        <p class="text-xs text-slate-600 mt-1">
+                            {{ node.lessons|length }} bài giảng - {{ node.completed_exercises }}/{{ node.exercises|length }} bài tập
+                        </p>
+                    </div>
+                </div>
+
+                <!-- CỘT PHẢI: BÀI TẬP CODE (Dàn hết sang mép phải) -->
+                <div class="w-full min-w-0 flex flex-col gap-2 order-3">
+                    {% if node.exercises %}
+                        {% for ex in node.exercises %}
+                        <div class="w-full flex items-center min-w-0">
+                            <div class="hidden md:block w-8 lg:w-12 tree-branch-line shrink-0"></div>
+                            <a href="{{ url_for('judge.workspace', slug=ex.slug) }}"
+                               class="w-full flex-1 min-w-0 p-3 rounded border border-slate-300 bg-white hover:border-emerald-600 hover:bg-emerald-50/40 text-xs sm:text-sm flex items-center justify-between gap-3 transition">
+                                <span class="font-medium text-slate-800 break-words leading-snug">
+                                    {{ ex.title }}
+                                </span>
+                                {% if ex.is_ac %}
+                                <span class="text-emerald-600 font-bold text-xs shrink-0">Đã giải</span>
+                                {% else %}
+                                <span class="text-emerald-700 font-semibold text-xs shrink-0">Làm bài tập</span>
+                                {% endif %}
+                            </a>
+                        </div>
+                        {% endfor %}
+                    {% else %}
+                        <div class="hidden md:block"></div>
+                    {% endif %}
+                </div>
+
+            </div>
+
+            <div class="tree-spine h-8"></div>
+        </div>
+        {% endfor %}
+        {% endfor %}
+
+        <div class="flex flex-col items-center">
+            <span class="px-4 py-1 rounded bg-emerald-600 text-white text-xs font-bold uppercase tracking-wider">
+                Hoàn thành lộ trình Web
+            </span>
+        </div>
+
+    </div>
+
+    {% if current_user.is_authenticated and current_user.is_admin_or_instructor %}
+    <details class="w-full bg-white border border-slate-200 rounded-lg p-4 text-sm">
+        <summary class="font-semibold text-slate-700 cursor-pointer">
+            Công cụ Giảng viên: Đồng bộ thêm bài giảng từ link SmartDoc (fit.neu.edu.vn)
+        </summary>
+        <form method="POST" action="{{ url_for('skills.import_smartdoc_to_node') }}" class="mt-3 flex flex-wrap items-end gap-3">
+            <div class="flex-1 min-w-[240px]">
+                <label class="block text-xs text-slate-600 mb-1">URL SmartDoc:</label>
+                <input type="text" name="smartdoc_url" value="https://fit.neu.edu.vn/smartdoc/room/DKwsP5/?chap=1"
+                       class="w-full px-3 py-1.5 rounded border border-slate-300 text-sm">
+            </div>
+            <div>
+                <label class="block text-xs text-slate-600 mb-1">Gắn vào Node:</label>
+                <select name="skill_id" class="px-3 py-1.5 rounded border border-slate-300 text-sm bg-white">
+                    {% for tier_group in roadmap_tiers %}
+                        {% for n in tier_group.nodes %}
+                        <option value="{{ n.id }}">{{ n.name }}</option>
+                        {% endfor %}
+                    {% endfor %}
+                </select>
+            </div>
+            <div>
+                <label class="block text-xs text-slate-600 mb-1">Chương:</label>
+                <input type="number" name="chap" min="1" max="20" placeholder="Tự động"
+                       class="w-24 px-3 py-1.5 rounded border border-slate-300 text-sm">
+            </div>
+            <button type="submit" name="import_mode" value="single" class="px-4 py-1.5 rounded bg-[#0056D2] text-white text-sm font-semibold">
+                Đồng bộ
+            </button>
+        </form>
+    </details>
+    {% endif %}
+
+</div>
+{% endblock %}

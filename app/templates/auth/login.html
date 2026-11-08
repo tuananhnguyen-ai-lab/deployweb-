@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Đăng nhập - Hệ thống LMS</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            letter-spacing: -0.011em;
+        }
+        .auth-card {
+            background: #ffffff;
+            border-radius: 16px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.25);
+            max-width: 460px;
+            width: 100%;
+            padding: 2rem;
+        }
+        .role-selector .btn-check:checked + .btn-outline-primary {
+            background-color: #2563eb;
+            color: #fff;
+            border-color: #2563eb;
+        }
+    </style>
+</head>
+<body>
+<div class="auth-card">
+    <div class="text-center mb-4">
+        <h3 class="fw-bold mb-1">Đăng nhập hệ thống</h3>
+        <p class="text-muted small mb-0">Chọn vai trò của bạn để truy cập đúng phân hệ</p>
+    </div>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <div class="alert alert-{{ category }} alert-dismissible fade show py-2 small" role="alert">
+                    {{ message }}
+                    <button type="button" class="btn-close py-2" data-bs-dismiss="alert"></button>
+                </div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+
+    <form method="POST" action="{{ url_for('auth.login') }}">
+        <!-- Chọn phân quyền chính: Người học hoặc Giảng viên -->
+        <div class="mb-3">
+            <label class="form-label fw-semibold small">Đăng nhập với tư cách:</label>
+            <div class="row g-2 role-selector">
+                <div class="col-6">
+                    <input type="radio" class="btn-check" name="role" id="role_learner" value="learner"
+                           {% if selected_role != 'instructor' %}checked{% endif %} onchange="updateRoleHint()">
+                    <label class="btn btn-outline-primary w-100 py-2 fw-semibold" for="role_learner">
+                        🎓 Người học
+                    </label>
+                </div>
+                <div class="col-6">
+                    <input type="radio" class="btn-check" name="role" id="role_instructor" value="instructor"
+                           {% if selected_role == 'instructor' %}checked{% endif %} onchange="updateRoleHint()">
+                    <label class="btn btn-outline-primary w-100 py-2 fw-semibold" for="role_instructor">
+                        👨‍🏫 Giảng viên
+                    </label>
+                </div>
+            </div>
+            <div id="roleHint" class="form-text text-primary mt-1 small">
+                → Sau khi đăng nhập sẽ chuyển thẳng đến <strong>phần Ôn tập</strong>.
+            </div>
+        </div>
+
+        <div class="mb-3">
+            <label for="identifier" class="form-label fw-semibold small">Tên đăng nhập hoặc Email</label>
+            <input type="text" class="form-control" id="identifier" name="identifier"
+                   placeholder="VD: hocvien hoặc sv.cntt@neu.edu.vn" required>
+        </div>
+
+        <div class="mb-3">
+            <label for="password" class="form-label fw-semibold small">Mật khẩu</label>
+            <input type="password" class="form-control" id="password" name="password"
+                   placeholder="Nhập mật khẩu" required>
+        </div>
+
+        <div class="form-check mb-3">
+            <input class="form-check-input" type="checkbox" id="remember" name="remember">
+            <label class="form-check-label small" for="remember">Ghi nhớ đăng nhập</label>
+        </div>
+
+        <button type="submit" class="btn btn-primary w-100 py-2 fw-semibold">
+            Đăng nhập
+        </button>
+    </form>
+
+    <hr class="my-4">
+    <p class="text-center small mb-0">
+        Chưa có tài khoản?
+        <a href="{{ url_for('auth.register') }}" class="fw-semibold text-decoration-none">Đăng ký ngay</a>
+    </p>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+    function updateRoleHint() {
+        const isInstructor = document.getElementById('role_instructor').checked;
+        const hintEl = document.getElementById('roleHint');
+        if (isInstructor) {
+            hintEl.innerHTML = '→ Sau khi đăng nhập sẽ chuyển đến <strong>trang Thêm bài giảng & Đẩy bài tập</strong>.';
+        } else {
+            hintEl.innerHTML = '→ Sau khi đăng nhập sẽ chuyển thẳng đến <strong>phần Ôn tập</strong>.';
+        }
+    }
+    updateRoleHint();
+</script>
+</body>
+</html>
